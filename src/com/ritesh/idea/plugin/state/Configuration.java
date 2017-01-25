@@ -16,20 +16,34 @@
 
 package com.ritesh.idea.plugin.state;
 
+import com.ritesh.idea.plugin.exception.InvalidConfigurationException;
+import com.ritesh.idea.plugin.reviewboard.Credentials;
+import org.apache.commons.lang.StringUtils;
+
 /**
  * @author Ritesh
  */
-public class Configuration {
+public class Configuration implements Cloneable {
     public String url;
     public String username;
     public String password;
+    public String token;
+    public Boolean useToken;
     public Boolean useRbTools;
     public String rbtPath;
 
-    public Configuration(String url, String username, String password, Boolean useRbTools, String rbtPath) {
+    public Configuration(String url,
+                         String username,
+                         String password,
+                         String token,
+                         Boolean useToken,
+                         Boolean useRbTools,
+                         String rbtPath) {
         this.url = url;
         this.username = username;
         this.password = password;
+        this.token = token;
+        this.useToken = useToken;
         this.useRbTools = useRbTools;
         this.rbtPath = rbtPath;
     }
@@ -37,10 +51,8 @@ public class Configuration {
     public Configuration() {
     }
 
-    @Override
-    protected Object clone() throws CloneNotSupportedException {
-        super.clone();
-        return new Configuration(url, username, password, useRbTools, rbtPath);
+    public Configuration(Configuration src) {
+        this(src.url, src.username, src.password, src.token, src.useToken, src.useRbTools, src.rbtPath);
     }
 
     @Override
@@ -63,6 +75,8 @@ public class Configuration {
         return !(url != null ? !url.equals(that.url) : that.url != null)
                 && !(username != null ? !username.equals(that.username) : that.username != null)
                 && !(password != null ? !password.equals(that.password) : that.password != null)
+                && !(token != null ? !token.equals(that.token) : that.token != null)
+                && !(useToken != null ? !useToken.equals(that.useToken) : that.useToken != null)
                 && !(rbtPath != null ? !rbtPath.equals(that.rbtPath) : that.rbtPath != null)
                 && !(useRbTools != null ? !useRbTools.equals(that.useRbTools) : that.useRbTools != null);
 
@@ -73,8 +87,48 @@ public class Configuration {
         int result = url != null ? url.hashCode() : 0;
         result = 31 * result + (username != null ? username.hashCode() : 0);
         result = 31 * result + (password != null ? password.hashCode() : 0);
+        result = 31 * result + (token != null ? token.hashCode() : 0);
+        result = 31 * result + (useToken != null ? useToken.hashCode() : 0);
         result = 31 * result + (useRbTools != null ? useRbTools.hashCode() : 0);
         result = 31 * result + (rbtPath != null ? rbtPath.hashCode() : 0);
         return result;
+    }
+
+    public Credentials createCredentials() {
+
+        if (useToken == null || !useToken) {
+
+            if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password))
+                throw new InvalidConfigurationException("Review board not configured properly");
+
+            return new Credentials.UsernamePassword(username, password);
+
+        } else {
+
+            if (StringUtils.isEmpty(token))
+                throw new InvalidConfigurationException("Review board not configured properly");
+
+            return new Credentials.ApiToken(token);
+        }
+    }
+
+    public boolean isValid()
+    {
+        if (StringUtils.isEmpty(url))
+            return false;
+
+        if (useToken == null || !useToken) {
+
+            if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password))
+                return false;
+
+        } else {
+
+            if (StringUtils.isEmpty(token))
+                return false;
+
+        }
+
+        return true;
     }
 }

@@ -21,7 +21,6 @@ import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.util.Comparing;
 import com.ritesh.idea.plugin.exception.InvalidConfigurationException;
 import com.ritesh.idea.plugin.messages.PluginBundle;
 import com.ritesh.idea.plugin.reviewboard.ReviewDataProvider;
@@ -29,7 +28,6 @@ import com.ritesh.idea.plugin.ui.ExceptionHandler;
 import com.ritesh.idea.plugin.ui.TaskUtil;
 import com.ritesh.idea.plugin.ui.panels.LoginPanel;
 import com.ritesh.idea.plugin.util.ThrowableFunction;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableObject;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
@@ -47,6 +45,7 @@ public class SettingsPage implements Configurable {
 
     private LoginPanel loginPanel = new LoginPanel();
     private Configuration oldConfigurationState;
+    private Configuration currentConfigurationState;
     private Project project;
 
     public SettingsPage(Project project) {
@@ -70,11 +69,16 @@ public class SettingsPage implements Configurable {
     public JComponent createComponent() {
         oldConfigurationState = ConfigurationPersistance.getInstance(project).getState();
         if (oldConfigurationState != null) {
+            currentConfigurationState = new Configuration(oldConfigurationState);
             loginPanel.setUrl(oldConfigurationState.url);
             loginPanel.setUsername(oldConfigurationState.username);
             loginPanel.setPassword(oldConfigurationState.password);
+            loginPanel.setToken(oldConfigurationState.token);
+            loginPanel.setUseToken(oldConfigurationState.useToken);
             loginPanel.setUseRbTools(oldConfigurationState.useRbTools);
             loginPanel.setUseRbToolPath(oldConfigurationState.rbtPath);
+        } else {
+            currentConfigurationState = new Configuration();
         }
         loginPanel.addActionListener(new ActionListener() {
             @Override
@@ -87,22 +91,16 @@ public class SettingsPage implements Configurable {
 
     @Override
     public boolean isModified() {
-        if (oldConfigurationState == null) {
-            return !loginPanel.getUrl().isEmpty() || !loginPanel.getUsername().isEmpty() || !loginPanel.getPassword().isEmpty();
-        }
-        return !Comparing.equal(loginPanel.getUrl(), oldConfigurationState.url) ||
-                !Comparing.equal(loginPanel.getUsername(), oldConfigurationState.username) ||
-                !Comparing.equal(loginPanel.useRbTools(), oldConfigurationState.useRbTools) ||
-                !Comparing.equal(loginPanel.rbtPath(), oldConfigurationState.rbtPath) ||
-                !Comparing.equal(loginPanel.getPassword(), oldConfigurationState.password);
+        fetchCurrentConfiguration();
+        return currentConfigurationState.isValid() && !currentConfigurationState.equals(oldConfigurationState);
     }
 
     @Override
     public void apply() throws ConfigurationException {
-        Configuration configuration = new Configuration(
-                loginPanel.getUrl(), loginPanel.getUsername(), loginPanel.getPassword(), loginPanel.useRbTools(), loginPanel.rbtPath());
-        ConfigurationPersistance.getInstance(project).loadState(configuration);
+        fetchCurrentConfiguration();
+        ConfigurationPersistance.getInstance(project).loadState(currentConfigurationState);
         ReviewDataProvider.reset();
+        oldConfigurationState = new Configuration(currentConfigurationState);
     }
 
     @Override
@@ -116,19 +114,20 @@ public class SettingsPage implements Configurable {
     }
 
     private void testConnection() {
-        final MutableObject connException = new MutableObject();
-        if (StringUtils.isEmpty(loginPanel.getUrl()) || StringUtils.isEmpty(loginPanel.getUsername())
-                || StringUtils.isEmpty(loginPanel.getPassword())) {
+
+        fetchCurrentConfiguration();
+        if (!currentConfigurationState.isValid()) {
             Messages.showErrorDialog(project, "Connection information provided is invalid.", "Invalid Settings");
             return;
         }
+
+        final MutableObject connException = new MutableObject();
         TaskUtil.queueTask(project, PluginBundle.message(PluginBundle.CONNECTION_TEST_TITLE), true, new ThrowableFunction<ProgressIndicator, Void>() {
             @Override
             public Void throwableCall(ProgressIndicator params) throws Exception {
                 try {
                     params.setIndeterminate(true);
-                    ReviewDataProvider.getInstance(project)
-                            .testConnection(loginPanel.getUrl(), loginPanel.getUsername(), loginPanel.getPassword());
+                    ReviewDataProvider.testConnection(currentConfigurationState);
                     // The task was not cancelled and is successful
                     connException.setValue(Boolean.TRUE);
                 } catch (InvalidConfigurationException a) {
@@ -147,5 +146,16 @@ public class SettingsPage implements Configurable {
             Messages.showErrorDialog(message.message,
                     PluginBundle.message(PluginBundle.CONNECTION_STATUS_TITLE));
         }
+    }
+
+    private void fetchCurrentConfiguration() {
+        boolean useToken = loginPanel.useToken();
+        currentConfigurationState.url = loginPanel.getUrl();
+        currentConfigurationState.username = useToken ? null : loginPanel.getUsername();
+        currentConfigurationState.password = useToken ? null : loginPanel.getPassword();
+        currentConfigurationState.token = useToken ? loginPanel.getToken() : null;
+        currentConfigurationState.useToken = useToken;
+        currentConfigurationState.useRbTools = loginPanel.useRbTools();
+        currentConfigurationState.rbtPath = loginPanel.rbtPath();
     }
 }

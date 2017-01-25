@@ -25,7 +25,6 @@ import com.ritesh.idea.plugin.state.ConfigurationPersistance;
 import com.ritesh.idea.plugin.state.DefaultState;
 import com.ritesh.idea.plugin.state.DefaultStatePersistance;
 import com.ritesh.idea.plugin.util.Page;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableFloat;
 
 import java.io.IOException;
@@ -52,7 +51,7 @@ public class ReviewDataProvider {
 
         if (!reviewDataProviderMap.containsKey(project)) {
             ReviewBoardClient client = new ReviewBoardClient(configuration.url
-                    , configuration.username, configuration.password);
+                    , configuration.createCredentials());
             reviewDataProviderMap.put(project, new ReviewDataProvider(client));
         }
         return reviewDataProviderMap.get(project);
@@ -64,7 +63,7 @@ public class ReviewDataProvider {
 
     public static Configuration getConfiguration(final Project project) {
         Configuration state = ConfigurationPersistance.getInstance(project).getState();
-        if (state == null || StringUtils.isEmpty(state.url) || StringUtils.isEmpty(state.username) || StringUtils.isEmpty(state.password)) {
+        if (state == null || !state.isValid()) {
             throw new InvalidConfigurationException("Review board not configured properly");
         }
         return state;
@@ -124,8 +123,11 @@ public class ReviewDataProvider {
         DefaultStatePersistance.getInstance(project).loadState(defaultState);
     }
 
-    public void testConnection(String url, String username, String password) throws Exception {
-        client.testConnection(url, username, password);
+    public static void testConnection(Configuration configuration) throws Exception {
+
+        ReviewBoardClient client = new ReviewBoardClient(configuration.url
+                , configuration.createCredentials());
+        client.testConnection();
     }
 
     public interface Progress {

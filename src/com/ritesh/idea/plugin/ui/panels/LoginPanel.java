@@ -35,6 +35,9 @@ public class LoginPanel {
     private JBCheckBox useRbTools;
     private JTextField rbtPath;
     private JCheckBox useRbtPath;
+    private JRadioButton usePassword;
+    private JRadioButton useToken;
+    private JTextField token;
 
     public LoginPanel() {
         useRbTools.addItemListener(new ItemListener() {
@@ -63,6 +66,27 @@ public class LoginPanel {
                 }
             }
         });
+
+        usePassword.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                boolean doUsePassword = usePassword.isSelected();
+                username.setEnabled(doUsePassword);
+                password.setEnabled(doUsePassword);
+                token.setEnabled(!doUsePassword);
+            }
+        });
+
+        useToken.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                boolean doUseToken = useToken.isSelected();
+                username.setEnabled(!doUseToken);
+                password.setEnabled(!doUseToken);
+                token.setEnabled(doUseToken);
+            }
+        });
+        useToken.setEnabled(true);
     }
 
     public void addActionListener(ActionListener l) {
@@ -85,6 +109,14 @@ public class LoginPanel {
         return String.valueOf(password.getPassword());
     }
 
+    public String getToken() {
+        return token.getText().trim();
+    }
+
+    public boolean useToken() {
+        return useToken.isSelected();
+    }
+
     public void setUrl(String url) {
         this.url.setText(url);
     }
@@ -95,6 +127,15 @@ public class LoginPanel {
 
     public void setPassword(String password) {
         this.password.setText(password);
+    }
+
+    public void setToken(String token) {
+        this.token.setText(token);
+    }
+
+    public void setUseToken(Boolean useToken) {
+        this.useToken.setSelected(useToken == Boolean.TRUE);
+        this.usePassword.setSelected(useToken != Boolean.TRUE);
     }
 
     public Boolean useRbTools() {

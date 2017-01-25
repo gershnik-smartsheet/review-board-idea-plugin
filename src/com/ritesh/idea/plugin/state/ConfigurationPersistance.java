@@ -18,6 +18,7 @@ package com.ritesh.idea.plugin.state;
 
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.project.Project;
+import com.intellij.util.xmlb.XmlSerializerUtil;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -42,7 +43,7 @@ public class ConfigurationPersistance implements PersistentStateComponent<Config
         return ServiceManager.getService(project, ConfigurationPersistance.class);
     }
 
-    private Configuration state;
+    private final Configuration state = new Configuration();
 
     @Nullable
     @Override
@@ -52,6 +53,6 @@ public class ConfigurationPersistance implements PersistentStateComponent<Config
 
     @Override
     public void loadState(Configuration state) {
-        this.state = state;
+        XmlSerializerUtil.copyBean(state, this.state);
     }
 }

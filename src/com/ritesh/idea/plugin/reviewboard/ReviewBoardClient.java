@@ -23,7 +23,6 @@ import com.ritesh.idea.plugin.exception.InvalidCredentialException;
 import com.ritesh.idea.plugin.exception.ReviewBoardServerException;
 import com.ritesh.idea.plugin.reviewboard.model.*;
 import com.ritesh.idea.plugin.util.HttpRequestBuilder;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -55,21 +54,11 @@ public class ReviewBoardClient {
     private static final String ERRORCODE_LOGINFAILED = "104";
 
     private final String url;
-    private final String userName;
-    private final String password;
+    private final Credentials credentials;
 
-    public ReviewBoardClient(String url, String userName, String password) {
+    public ReviewBoardClient(String url, Credentials credentials) {
         this.url = url;
-        this.userName = userName;
-        this.password = password;
-    }
-
-    private String getAuthorizationHeader() {
-        return getAuthorizationHeader(userName, password);
-    }
-
-    private String getAuthorizationHeader(String userName, String password) {
-        return "Basic " + Base64.encodeBase64String((userName + ":" + password).getBytes());
+        this.credentials = credentials;
     }
 
     private <T extends RBModel> T checkSuccess(T model) {
@@ -95,21 +84,21 @@ public class ReviewBoardClient {
         RBReviewRequestList result = requestBuilder.queryString("start", String.valueOf(start))
                 .queryString("max-results", String.valueOf(count))
                 .queryString("status", status)
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .asJson(RBReviewRequestList.class);
         return checkSuccess(result);
     }
 
     public RBDiffList diffListApi(String reviewRequestId) throws URISyntaxException, IOException {
         RBDiffList result = HttpRequestBuilder.get(url).route(API).route(REVIEW_REQUESTS).route(reviewRequestId)
-                .route(DIFFS).slash().header(AUTHORIZATION, getAuthorizationHeader()).asJson(RBDiffList.class);
+                .route(DIFFS).slash().header(AUTHORIZATION, credentials.getAuthorizationHeader()).asJson(RBDiffList.class);
         return checkSuccess(result);
     }
 
     public RBFileDiff fileDiffApi(String reviewRequestId, String revision) throws URISyntaxException, IOException {
         RBFileDiff result = HttpRequestBuilder.get(url).route(API).route(REVIEW_REQUESTS)
                 .route(reviewRequestId).route(DIFFS).route(revision).route(FILES).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .asJson(RBFileDiff.class);
         return checkSuccess(result);
     }
@@ -118,7 +107,7 @@ public class ReviewBoardClient {
         RBComments result = HttpRequestBuilder.get(url).route(API).route(REVIEW_REQUESTS)
                 .route(reviewRequestId).route(DIFFS).route(revision).route(FILES).route(fileId)
                 .route(DIFF_COMMENTS).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .asJson(RBComments.class);
         return checkSuccess(result);
     }
@@ -126,7 +115,7 @@ public class ReviewBoardClient {
     public RBReview createReviewApi(String reviewRequestId, Boolean shipIt) throws URISyntaxException, IOException {
         HttpRequestBuilder requestBuilder = HttpRequestBuilder.post(url).route(API).route(REVIEW_REQUESTS)
                 .route(reviewRequestId).route(REVIEWS).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader());
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader());
         if (shipIt != null) requestBuilder.field("ship_it", shipIt);
         RBReview result = requestBuilder.asJson(RBReview.class);
         return checkSuccess(result);
@@ -134,7 +123,7 @@ public class ReviewBoardClient {
 
     public RBRepository repositories(int count) throws URISyntaxException, IOException {
         RBRepository result = HttpRequestBuilder.get(url).route(API).route(REPOSITORIES).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .queryString("max-results", count)
                 .asJson(RBRepository.class);
         return checkSuccess(result);
@@ -149,7 +138,7 @@ public class ReviewBoardClient {
                 .field("num_lines", num_lines)
                 .field("issue_opened", issue_opened)
                 .field("text", text)
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .asJson(RBModel.class);
         checkSuccess(result);
     }
@@ -159,7 +148,7 @@ public class ReviewBoardClient {
         HttpRequestBuilder put = HttpRequestBuilder.put(url);
         put.route(API).route(REVIEW_REQUESTS)
                 .route(reviewRequestId).route(REVIEWS).route(reviewId).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .field("public", isPublic);
         if (!StringUtils.isEmpty(body_bottom)) put.field("body_bottom", body_bottom);
         if (!StringUtils.isEmpty(body_top)) put.field("body_top", body_top);
@@ -170,7 +159,7 @@ public class ReviewBoardClient {
     public String contents(String href) {
         try {
             HttpRequestBase request = HttpRequestBuilder.get(href)
-                    .header(AUTHORIZATION, getAuthorizationHeader())
+                    .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                     .request();
             try (CloseableHttpClient client = HttpClientBuilder.create().setSslcontext(CertificateManager.getInstance().getSslContext()).build()) {
                 CloseableHttpResponse response = client.execute(request);
@@ -188,7 +177,7 @@ public class ReviewBoardClient {
 
     public RBCreateReview createReviewRequestApi(String repositoryId) throws URISyntaxException, IOException {
         RBCreateReview result = HttpRequestBuilder.post(url).route(API).route(REVIEW_REQUESTS).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .field("repository", repositoryId)
                 .asJson(RBCreateReview.class);
         return checkSuccess(result);
@@ -198,7 +187,7 @@ public class ReviewBoardClient {
     public RBModel updateReviewRequestStatus(String reviewRequestId, String status) throws URISyntaxException, IOException {
         RBModel result = HttpRequestBuilder.put(url).route(API).route(REVIEW_REQUESTS)
                 .route(reviewRequestId).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .field("status", status)
                 .asJson(RBCreateReview.class);
         return checkSuccess(result);
@@ -207,7 +196,7 @@ public class ReviewBoardClient {
     public RBModel draftDiffUploadApi(String reviewRequestId, String content, String basedir) throws URISyntaxException, IOException {
         RBModel model = HttpRequestBuilder.post(url).route(API).route(REVIEW_REQUESTS)
                 .route(reviewRequestId).route(DIFFS).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .field("basedir", basedir)
                 .file("path", "git.diff", content.getBytes(CharsetToolkit.UTF8_CHARSET))
                 .asJson(RBModel.class);
@@ -216,7 +205,7 @@ public class ReviewBoardClient {
 
     public RBGroupList groupsApi(String q, int maxResults) throws URISyntaxException, IOException {
         RBGroupList result = HttpRequestBuilder.get(url).route(API).route(GROUPS).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .queryString("q", q)
                 .queryString("max-results", maxResults)
                 .asJson(RBGroupList.class);
@@ -225,7 +214,7 @@ public class ReviewBoardClient {
 
     public RBUserList usersApi(String q) throws URISyntaxException, IOException {
         RBUserList result = HttpRequestBuilder.get(url).route(API).route(USERS).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .queryString("q", q)
                 .asJson(RBUserList.class);
         return checkSuccess(result);
@@ -236,7 +225,7 @@ public class ReviewBoardClient {
                                    String targetPeople, boolean isPublic) throws URISyntaxException, IOException {
         RBModel model = HttpRequestBuilder.post(url).route(API).route(REVIEW_REQUESTS)
                 .route(reviewRequestId).route(DRAFT).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader())
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader())
                 .field("summary", summary)
                 .field("description", description)
                 .field("target_groups", targetGroups)
@@ -246,9 +235,9 @@ public class ReviewBoardClient {
         return checkSuccess(model);
     }
 
-    public RBModel testConnection(String url, String username, String password) throws URISyntaxException, IOException {
+    public RBModel testConnection() throws URISyntaxException, IOException {
         RBModel model = HttpRequestBuilder.get(url).route(API).slash()
-                .header(AUTHORIZATION, getAuthorizationHeader(username, password)).asJson(RBModel.class);
+                .header(AUTHORIZATION, credentials.getAuthorizationHeader()).asJson(RBModel.class);
         return checkSuccess(model);
     }
 }

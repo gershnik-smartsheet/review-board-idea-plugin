@@ -26,6 +26,7 @@ import com.intellij.openapi.vcs.VcsException;
 import com.intellij.openapi.vcs.changes.ChangeList;
 import com.intellij.openapi.vcs.history.VcsRevisionNumber;
 import com.intellij.openapi.vcs.versionBrowser.CommittedChangeList;
+import com.ritesh.idea.plugin.reviewboard.Credentials;
 import org.jetbrains.idea.svn.SvnVcs;
 
 import java.io.File;
@@ -41,15 +42,13 @@ import java.util.List;
 public class RbToolsDiffProvider implements IVcsDiffProvider {
     private static final Logger LOG = Logger.getInstance(RbToolsDiffProvider.class);
 
-    private String userName;
-    private String password;
+    private Credentials credentials;
     private String url;
     private String rbtPath;
     private AbstractVcs vcs;
 
-    public RbToolsDiffProvider(String url, String userName, String password, String rbtPath, AbstractVcs vcs) {
-        this.userName = userName;
-        this.password = password;
+    public RbToolsDiffProvider(String url, Credentials credentials, String rbtPath, AbstractVcs vcs) {
+        this.credentials = credentials;
         this.url = url;
         this.rbtPath = rbtPath;
         this.vcs = vcs;
@@ -93,7 +92,8 @@ public class RbToolsDiffProvider implements IVcsDiffProvider {
     private String generateDiff(VcsRevision revision, String rootPath, List<String> additionalOptions) throws IOException {
         List<String> commands = new ArrayList<>();
         String processPath = (rbtPath == null ? "rbt" : rbtPath);
-        commands.addAll(Arrays.asList(processPath, "diff", "--server", url, "--username", userName, "--password", password));
+        commands.addAll(Arrays.asList(processPath, "diff", "--server", url));
+        commands.addAll(credentials.getRbtCommandLine());
         commands.addAll(additionalOptions);
 
         if (revision != null) {

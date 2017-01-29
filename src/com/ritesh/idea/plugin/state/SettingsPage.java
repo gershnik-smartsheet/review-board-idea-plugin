@@ -98,7 +98,7 @@ public class SettingsPage implements Configurable {
     @Override
     public void apply() throws ConfigurationException {
         fetchCurrentConfiguration();
-        ConfigurationPersistance.getInstance(project).loadState(currentConfigurationState);
+        ConfigurationPersistance.getInstance(project).saveState(currentConfigurationState);
         ReviewDataProvider.reset();
         oldConfigurationState = new Configuration(currentConfigurationState);
     }

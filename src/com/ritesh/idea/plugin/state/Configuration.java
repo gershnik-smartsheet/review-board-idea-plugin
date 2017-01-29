@@ -16,6 +16,10 @@
 
 package com.ritesh.idea.plugin.state;
 
+import com.intellij.ide.passwordSafe.PasswordSafe;
+import com.intellij.ide.passwordSafe.PasswordSafeException;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.util.xmlb.annotations.Transient;
 import com.ritesh.idea.plugin.exception.InvalidConfigurationException;
 import com.ritesh.idea.plugin.reviewboard.Credentials;
 import org.apache.commons.lang.StringUtils;
@@ -24,9 +28,14 @@ import org.apache.commons.lang.StringUtils;
  * @author Ritesh
  */
 public class Configuration implements Cloneable {
+
+    public static final Logger LOG = Logger.getInstance(Configuration.class);
+
     public String url;
     public String username;
+    @Transient
     public String password;
+    @Transient
     public String token;
     public Boolean useToken;
     public Boolean useRbTools;
@@ -112,8 +121,7 @@ public class Configuration implements Cloneable {
         }
     }
 
-    public boolean isValid()
-    {
+    public boolean isValid() {
         if (StringUtils.isEmpty(url))
             return false;
 
@@ -131,4 +139,78 @@ public class Configuration implements Cloneable {
 
         return true;
     }
+
+    public void loadExternal() {
+        if (url == null)
+            return;
+
+        try {
+            String key = "RB token for " + url;
+            token = PasswordSafe.getInstance().getPassword(null, getClass(), key);
+        } catch (PasswordSafeException e) {
+            LOG.info("Couldn't get API token", e);
+        }
+
+        if (username == null)
+            return;
+
+        String key = username + " at " + url;
+        try {
+            password = PasswordSafe.getInstance().getPassword(null, getClass(), key);
+        } catch (PasswordSafeException e) {
+            LOG.info("Couldn't get password for user " + username, e);
+        }
+
+    }
+
+    public void saveExternal() {
+        if (url == null)
+            return;
+
+        try {
+            String key = "RB token for " + url;
+            if (token != null)
+                PasswordSafe.getInstance().storePassword(null, getClass(), key, token);
+            else
+                PasswordSafe.getInstance().removePassword(null, getClass(), key);
+        } catch (PasswordSafeException e) {
+            LOG.info("Couldn't set store API token", e);
+        }
+
+        if (username == null)
+            return;
+
+        try {
+            String key = username + " at " + url;
+            if (password != null)
+                PasswordSafe.getInstance().storePassword(null, getClass(), key, password);
+            else
+                PasswordSafe.getInstance().removePassword(null, getClass(), key);
+        } catch (PasswordSafeException e) {
+            LOG.info("Couldn't set password for user " + username, e);
+        }
+    }
+
+    public void clearExternal() {
+        if (url == null)
+            return;
+
+        try {
+            String key = "RB token for " + url;
+            PasswordSafe.getInstance().removePassword(null, getClass(), key);
+        } catch (PasswordSafeException e) {
+            LOG.info("Couldn't set store API token", e);
+        }
+
+        if (username == null)
+            return;
+
+        try {
+            String key = username + " at " + url;
+            PasswordSafe.getInstance().removePassword(null, getClass(), key);
+        } catch (PasswordSafeException e) {
+            LOG.info("Couldn't set password for user " + username, e);
+        }
+    }
+
 }

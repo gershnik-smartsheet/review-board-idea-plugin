@@ -54,5 +54,13 @@ public class ConfigurationPersistance implements PersistentStateComponent<Config
     @Override
     public void loadState(Configuration state) {
         XmlSerializerUtil.copyBean(state, this.state);
+        this.state.loadExternal();
+    }
+
+    public void saveState(Configuration state) {
+        this.state.clearExternal();
+        state.saveExternal();
+        XmlSerializerUtil.copyBean(state, this.state);
+        this.state.loadExternal();
     }
 }
